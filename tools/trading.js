@@ -13,16 +13,19 @@ export const tradingTools = {
     parameters: { address: 'string' },
     execute: async (args) => {
       try {
-        // Super defensive address extraction
-        let addr = args.address || args.addr || args.target || (Array.isArray(args) ? args[0] : null);
-        
-        // If args itself is a string that starts with 0x, use it
-        if (!addr && typeof args === 'string' && args.startsWith('0x')) addr = args;
-        
-        // If no address found yet, check all values in args object
-        if (!addr && typeof args === 'object') {
-            addr = Object.values(args).find(v => typeof v === 'string' && v.startsWith('0x'));
-        }
+        // Recursive search for 0x address in any object/array
+        const findAddr = (o) => {
+            if (typeof o === 'string' && o.trim().startsWith('0x')) return o.trim();
+            if (o && typeof o === 'object') {
+                for (let v of Object.values(o)) {
+                    const found = findAddr(v);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        let addr = findAddr(args);
 
         if (!addr) return { success: false, error: 'No valid wallet address found in arguments' };
         
