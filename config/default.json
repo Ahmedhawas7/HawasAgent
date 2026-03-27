@@ -1,0 +1,58 @@
+{
+  "mode": "local",
+  "agent": {
+    "name": "OpenClaw-Agent",
+    "version": "1.0.0",
+    "maxRetries": 5,
+    "loopDelayMs": 2000,
+    "selfImproveEnabled": true
+  },
+  "llm": {
+    "provider": "ollama",
+    "baseUrl": "http://localhost:11434",
+    "model": "llama3",
+    "fallbackModel": "mistral",
+    "temperature": 0.7,
+    "maxTokens": 4096,
+    "contextWindow": 8192
+  },
+  "memory": {
+    "path": "./data/memory",
+    "vectorDimensions": 384,
+    "maxResults": 10,
+    "persistOnDisk": true
+  },
+  "storage": {
+    "dbPath": "./data/agent.db",
+    "logsPath": "./data/logs",
+    "projectsPath": "./projects"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "enableWebSocket": true,
+    "enableCors": true
+  },
+  "cloud": {
+    "enabled": false,
+    "provider": null,
+    "region": null,
+    "remoteLlmUrl": null,
+    "remoteDbUrl": null
+  },
+  "multiAgent": {
+    "enabled": false,
+    "maxAgents": 5,
+    "coordinationMode": "leader"
+  },
+  "tools": {
+    "bash": true,
+    "node": true,
+    "python": true,
+    "git": true,
+    "npm": true,
+    "pip": true,
+    "curl": true,
+    "docker": false
+  }
+}
