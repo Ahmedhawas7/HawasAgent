@@ -94,8 +94,12 @@ async function startTelegramBot() {
     }
 
     try {
-      bot.sendChatAction(chatId, 'typing').catch(() => {});
+      const sendTyping = () => bot.sendChatAction(chatId, 'typing').catch(() => {});
+      sendTyping();
+      const interval = setInterval(sendTyping, 4000);
+
       const processResponse = await agent.process({ description: text, chatId });
+      clearInterval(interval);
       
       let responseText = '';
       if (processResponse.decision) {
@@ -105,21 +109,22 @@ async function startTelegramBot() {
               responseText += `📝 *الخطة:* \n${d.plan.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
           }
 
-          if (d.tool === 'say') {
-              responseText += d.args.message || d.args.text || '';
+          if (d.tool === 'say' || !d.tool) {
+              responseText += d.args?.message || d.args?.text || (typeof d === 'string' ? d : 'تمام يا هندسة، أنا عملت اللازم.');
           } else {
-              responseText += `🤔 *Thinking:* ${d.explanation}\n🛠️ *Action:* ${d.tool}\n\n`;
+              responseText += `🤔 *Thinking:* ${d.explanation || 'Executing...'}\n🛠️ *Action:* ${d.tool}\n\n`;
               if (processResponse.result && processResponse.result.success) {
                   responseText += `✅ *Result:* \`${processResponse.result.output || 'Success'}\``;
               } else if (processResponse.result) {
                   responseText += `⚠️ *Error:* \`${processResponse.result.error || 'Failed'}\``;
               }
           }
+      } else if (typeof processResponse === 'string') {
+          responseText = processResponse;
       } else {
-          responseText = '✅ تمام يا هندسة، خلصت المهمة.';
+          responseText = '✅ تمام يا هندسة، الخطة اتنفذت بنجاح.';
       }
 
-      memory.storeChatMessage(chatId, 'agent', responseText);
       await safeSend(chatId, responseText);
 
     } catch (err) {
