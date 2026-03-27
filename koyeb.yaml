@@ -1,0 +1,22 @@
+# Koyeb Deployment Configuration
+services:
+  - name: openclaw-agent
+    type: worker
+    image: node:20-slim
+    build:
+      type: dockerfile
+    env:
+      - key: TELEGRAM_BOT_TOKEN
+        value: ${env.TELEGRAM_BOT_TOKEN}
+      - key: GROQ_API_KEY
+        value: ${env.GROQ_API_KEY}
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+    # Persistent storage for SQLite (Requires a volume in Koyeb settings)
+    volumes:
+      - name: data
+        mount_path: /app/data
+    regions:
+      - fra # Frankfurt (usually best for Europe/Middle East)
+    instance_types:
+      - nano # Usually free tier

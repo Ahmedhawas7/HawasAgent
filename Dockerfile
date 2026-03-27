@@ -21,11 +21,12 @@ COPY . .
 # Create a data directory for persistence
 RUN mkdir -p /app/data && chown -R node:node /app/data
 
-# Switch to non-root user
+# Switch to non-root user and set HOME for HF compatibility
 USER node
+ENV HOME=/home/node
+WORKDIR $HOME/app
+RUN mkdir -p $HOME/app/data
 
-# Default port for some web components (if any)
-EXPOSE 3000
-
-# Start the Telegram bot by default
-CMD ["npm", "run", "telegram"]
+# Start the Telegram bot
+EXPOSE 7860
+CMD ["node", "start-telegram.js"]
