@@ -1,5 +1,7 @@
 import express from 'express';
+import path from 'path';
 import createLogger from '../logs/index.js';
+import config from '../config/index.js';
 
 const log = createLogger('api');
 
@@ -19,9 +21,18 @@ function createAPI(core) {
     next();
   });
 
+  // ─── Static Files (Projects) ─────────────────────────────
+  const projectsPath = path.resolve(config.storage.projectsPath);
+  app.use('/projects', express.static(projectsPath));
+
   // ─── Health ───────────────────────────────────────────────
   app.get('/', (req, res) => {
-    res.send('<h1>OpenClaw Agent is Online</h1><p>Check <a href="/health">/health</a> for details.</p>');
+    res.send(`
+      <h1>OpenClaw Agent is Online</h1>
+      <p>Check <a href="/health">/health</a> for details.</p>
+      <h2>Your Projects:</h2>
+      <p>View your projects at <code>/projects/[project-name]</code></p>
+    `);
   });
 
   app.get('/health', (req, res) => {

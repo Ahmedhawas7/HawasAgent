@@ -32,13 +32,14 @@ class AutonomousLoop {
   /**
    * Run the full autonomous loop for a goal
    */
-  async run(goalText) {
+  async run(goalText, context = {}) {
     this.running = true;
     this.iteration = 0;
     this.currentGoal = goalText;
+    this.context = context;
 
-    log.info('=== AUTONOMOUS LOOP STARTED ===', { goal: goalText });
-    this.core.emit('loopStart', { goal: goalText });
+    log.info('=== AUTONOMOUS LOOP STARTED ===', { goal: goalText, context });
+    this.core.emit('loopStart', { goal: goalText, context });
 
     // Store goal in memory
     const goalId = this.memory.storeGoal(goalText);
@@ -68,7 +69,7 @@ class AutonomousLoop {
         this.iteration++;
         const task = { ...plan.tasks[i], id: taskIds[i] };
         log.info(`\n--- Task ${i + 1}/${plan.tasks.length}: ${task.description} ---`);
-        this.core.emit('taskStart', { task, index: i });
+        this.core.emit('taskStart', { task, index: i, context: this.context });
         this.memory.updateTask(task.id, { status: 'active' });
 
         try {
@@ -114,7 +115,7 @@ class AutonomousLoop {
           }
         }
 
-        this.core.emit('taskEnd', { task, index: i });
+        this.core.emit('taskEnd', { task, index: i, context: this.context });
 
         // Small delay between tasks
         await this._delay(config.agent.loopDelayMs || 1000);
@@ -128,7 +129,7 @@ class AutonomousLoop {
       if (verification.complete && verification.confidence >= 0.7) {
         this.memory.updateGoal(goalId, { status: 'completed', result: verification.reasoning, completed_at: new Date().toISOString() });
         log.info('=== GOAL COMPLETED ===', { confidence: verification.confidence });
-        this.core.emit('goalComplete', { goalId, verification });
+        this.core.emit('goalComplete', { goalId, verification, context: this.context });
       } else if (failedTasks.length > 0 && this.iteration < this.maxIterations) {
         // Re-plan and retry failed parts
         log.info('Goal not fully complete, re-planning...');

@@ -140,7 +140,31 @@ async function startTelegram(core) {
       }
   };
 
-  bot.on('message', async (msg) => {
+    // ─── Proactive Listeners ─────────────────────────────────
+    core.on('loopStart', ({ goal, context }) => {
+      if (context.chatId) {
+        safeSend(context.chatId, `🚀 *بدأنا يا هندسة!* \nجاري العمل على هدفك: "${goal}"`);
+      }
+    });
+
+    core.on('taskStart', ({ task, index, context }) => {
+      if (context.chatId) {
+        bot.sendChatAction(context.chatId, 'typing').catch(() => {});
+        safeSend(context.chatId, `🛠️ *بقوم دلوقتي بالخطوة ${index + 1}:* \n${task.description}`);
+      }
+    });
+
+    core.on('goalComplete', ({ verification, context }) => {
+      if (context.chatId) {
+        const repo = config.storage.projectsPath.split('/').pop();
+        const host = process.env.SPACE_HOST || 'localhost:7860';
+        const previewUrl = `https://${host}/projects/`;
+        
+        safeSend(context.chatId, `✅ *تمت المهمة بنجاح يا وحش!* 🥳\n\n${verification.reasoning}\n\n🔗 *تقدر تشوف شغلك هنا:* \n${previewUrl}`);
+      }
+    });
+
+    bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     if (!text) return;
@@ -155,36 +179,14 @@ async function startTelegram(core) {
 
     try {
       bot.sendChatAction(chatId, 'typing').catch(() => {});
-      const processResponse = await agent.process({ description: text, chatId });
-      
-      let responseText = '';
-      if (processResponse.decision) {
-          const d = processResponse.decision;
-          
-          if (d.plan && Array.isArray(d.plan) && d.plan.length > 0) {
-              responseText += `📝 *الخطة:* \n${d.plan.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
-          }
-
-          if (d.tool === 'say') {
-              responseText += processResponse.result?.output || d.args?.message || d.args?.text || 'تم يا هندسة.';
-          } else {
-              responseText += `🤔 *Thinking:* ${d.explanation || 'Executing...'}\n🛠️ *Action:* ${d.tool}\n\n`;
-              if (processResponse.result && processResponse.result.success) {
-                  responseText += `✅ *Result:* \`${processResponse.result.output || 'Success'}\``;
-              } else if (processResponse.result) {
-                  responseText += `⚠️ *Error:* \`${processResponse.result.error || 'Failed'}\``;
-              }
-          }
-      } else if (typeof processResponse === 'string') {
-          responseText = processResponse;
-      } else {
-          responseText = '✅ تمام يا هندسة، الخطة اتنفذت بنجاح.';
-      }
-
-      log.info(`[Telegram] Sending response to ${chatId}`);
-      await safeSend(chatId, responseText);
+      const loop = core.get('loop');
+      // Run the full autonomous loop
+      loop.run(text, { chatId }).catch(err => {
+        log.error('Loop execution failed', { error: err.message });
+        bot.sendMessage(chatId, `⚠️ حصلت مشكلة أثناء التنفيذ: ${err.message}`).catch(() => {});
+      });
     } catch (err) {
-      log.error(`Telegram Process Error: ${err.message}`);
+      log.error(`Telegram Message Error: ${err.message}`);
       await bot.sendMessage(chatId, `⚠️ حصلت مشكلة: ${err.message}`).catch(() => {});
     }
   });
