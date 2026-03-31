@@ -147,11 +147,13 @@ async function startTelegram(core) {
       let responseText = '';
       if (processResponse.decision) {
           const d = processResponse.decision;
-          if (d.plan && Array.isArray(d.plan)) {
+          
+          if (d.plan && Array.isArray(d.plan) && d.plan.length > 0) {
               responseText += `📝 *الخطة:* \n${d.plan.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
           }
-          if (d.tool === 'say' || !d.tool) {
-              responseText += d.args?.message || d.args?.text || (typeof d === 'string' ? d : 'تمام يا هندسة، أنا عملت اللازم.');
+
+          if (d.tool === 'say') {
+              responseText += processResponse.result?.output || d.args?.message || d.args?.text || 'تم يا هندسة.';
           } else {
               responseText += `🤔 *Thinking:* ${d.explanation || 'Executing...'}\n🛠️ *Action:* ${d.tool}\n\n`;
               if (processResponse.result && processResponse.result.success) {
@@ -166,6 +168,7 @@ async function startTelegram(core) {
           responseText = '✅ تمام يا هندسة، الخطة اتنفذت بنجاح.';
       }
 
+      log.info(`[Telegram] Sending response to ${chatId}`);
       await safeSend(chatId, responseText);
     } catch (err) {
       log.error(`Telegram Process Error: ${err.message}`);
