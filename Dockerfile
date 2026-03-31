@@ -18,15 +18,12 @@ RUN npm install --omit=dev
 # Copy the rest of the application code
 COPY . .
 
-# Create a data directory for persistence
+# Create a data directory for persistence and set permissions
 RUN mkdir -p /app/data && chown -R node:node /app/data
 
-# Switch to non-root user and set HOME for HF compatibility
+# Switch to non-root user
 USER node
-ENV HOME=/home/node
-WORKDIR $HOME/app
-RUN mkdir -p $HOME/app/data
 
-# Start the Telegram bot
+# Start the unified server (API + Telegram Bot)
 EXPOSE 7860
-CMD ["node", "start-telegram.js"]
+CMD ["node", "server.js"]

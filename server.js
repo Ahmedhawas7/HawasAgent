@@ -15,6 +15,7 @@ import CloudAdapter from './cloud/index.js';
 import createAPI from './api/index.js';
 import createWebSocket from './web/websocket.js';
 import createLogger from './logs/index.js';
+import TelegramBot from 'node-telegram-bot-api';
 
 const log = createLogger('server');
 
@@ -106,7 +107,78 @@ async function startServer() {
   return { core, httpServer, app };
 }
 
-startServer().catch(err => {
+async function startTelegram(core) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+
+  log.info('Starting Telegram bot...');
+  const bot = new TelegramBot(token, { polling: true });
+  
+  const agent = core.get('agent');
+  const memory = core.get('memory');
+
+  const safeSend = async (chatId, text) => {
+      try {
+          await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+      } catch (err) {
+          log.warn('Markdown failed, using plain', { error: err.message });
+          const plain = text.replace(/[*_`\[\]()]/g, '');
+          await bot.sendMessage(chatId, plain).catch(e => log.error('Final send fail', e));
+      }
+  };
+
+  bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+    if (!text) return;
+
+    log.info(`[Telegram] [${chatId}] ${text}`);
+    memory.storeChatMessage(chatId, 'user', text);
+
+    if (text === '/start') {
+      await safeSend(chatId, '🤖 يا هلا يا هندسة! أنا شريكك التقني.\nإبعت لي أي ملف عايز تبنيه وأنا معاك.');
+      return;
+    }
+
+    try {
+      bot.sendChatAction(chatId, 'typing').catch(() => {});
+      const processResponse = await agent.process({ description: text, chatId });
+      
+      let responseText = '';
+      if (processResponse.decision) {
+          const d = processResponse.decision;
+          if (d.plan && Array.isArray(d.plan)) {
+              responseText += `📝 *الخطة:* \n${d.plan.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n`;
+          }
+          if (d.tool === 'say' || !d.tool) {
+              responseText += d.args?.message || d.args?.text || (typeof d === 'string' ? d : 'تمام يا هندسة، أنا عملت اللازم.');
+          } else {
+              responseText += `🤔 *Thinking:* ${d.explanation || 'Executing...'}\n🛠️ *Action:* ${d.tool}\n\n`;
+              if (processResponse.result && processResponse.result.success) {
+                  responseText += `✅ *Result:* \`${processResponse.result.output || 'Success'}\``;
+              } else if (processResponse.result) {
+                  responseText += `⚠️ *Error:* \`${processResponse.result.error || 'Failed'}\``;
+              }
+          }
+      } else if (typeof processResponse === 'string') {
+          responseText = processResponse;
+      } else {
+          responseText = '✅ تمام يا هندسة، الخطة اتنفذت بنجاح.';
+      }
+
+      await safeSend(chatId, responseText);
+    } catch (err) {
+      log.error(`Telegram Process Error: ${err.message}`);
+      await bot.sendMessage(chatId, `⚠️ حصلت مشكلة: ${err.message}`).catch(() => {});
+    }
+  });
+
+  log.info('Telegram bot active!');
+}
+
+startServer().then(async ({ core }) => {
+  await startTelegram(core);
+}).catch(err => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
