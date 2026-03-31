@@ -103,15 +103,32 @@ async function startServer() {
   return { core, httpServer, app };
 }
 
+let botStatus = { active: false, error: null, startTime: null };
+
 async function startTelegram(core) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    log.error('CRITICAL: TELEGRAM_BOT_TOKEN is missing! Bot will not start.');
+    botStatus.error = 'Missing Token';
+    return;
+  }
 
-  log.info('Starting Telegram bot...');
-  const bot = new TelegramBot(token, { polling: true });
-  
-  const agent = core.get('agent');
-  const memory = core.get('memory');
+  try {
+    log.info('Starting Telegram bot...');
+    const bot = new TelegramBot(token, { polling: true });
+    
+    const agent = core.get('agent');
+    const memory = core.get('memory');
+
+    bot.getMe().then(me => {
+      log.info('Bot identity verified:', { username: me.username });
+      botStatus.active = true;
+      botStatus.username = me.username;
+      botStatus.startTime = new Date().toISOString();
+    }).catch(err => {
+      log.error('Bot identity verification failed:', err);
+      botStatus.error = err.message;
+    });
 
   const safeSend = async (chatId, text) => {
       try {
@@ -172,10 +189,15 @@ async function startTelegram(core) {
     }
   });
 
-  log.info('Telegram bot active!');
+    log.info('Telegram bot active!');
+  } catch (err) {
+    log.error('Telegram bot failed to start:', err);
+    botStatus.error = err.message;
+  }
 }
 
 startServer().then(async ({ core }) => {
+  core.set('botStatus', () => botStatus); 
   await startTelegram(core);
 }).catch(err => {
   console.error('Failed to start server:', err);

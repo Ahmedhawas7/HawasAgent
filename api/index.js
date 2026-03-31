@@ -25,7 +25,15 @@ function createAPI(core) {
   });
 
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    const botStatusGetter = core.get('botStatus');
+    const botStatus = typeof botStatusGetter === 'function' ? botStatusGetter() : null;
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      bot: botStatus,
+      envKeys: Object.keys(process.env).filter(k => !k.includes('TOKEN') && !k.includes('KEY') && !k.includes('PWD') && !k.includes('SECRET'))
+    });
   });
 
   // ─── Status ───────────────────────────────────────────────
