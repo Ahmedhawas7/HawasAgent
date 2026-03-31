@@ -25,8 +25,8 @@ function createAPI(core) {
   });
 
   app.get('/health', (req, res) => {
-    const botStatusGetter = core.get('botStatus');
-    const botStatus = typeof botStatusGetter === 'function' ? botStatusGetter() : null;
+    const botStatusModule = core.get('botStatus');
+    const botStatus = botStatusModule ? botStatusModule.get() : null;
     
     res.json({ 
       status: 'ok', 

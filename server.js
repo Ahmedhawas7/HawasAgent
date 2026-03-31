@@ -197,7 +197,7 @@ async function startTelegram(core) {
 }
 
 startServer().then(async ({ core }) => {
-  core.set('botStatus', () => botStatus); 
+  core.register('botStatus', { get: () => botStatus }); 
   await startTelegram(core);
 }).catch(err => {
   console.error('Failed to start server:', err);
