@@ -25,7 +25,7 @@
   "storage": {
     "dbPath": "./data/agent.db",
     "logsPath": "./data/logs",
-    "projectsPath": "./projects"
+    "projectsPath": "./data/projects"
   },
   "server": {
     "host": "0.0.0.0",
