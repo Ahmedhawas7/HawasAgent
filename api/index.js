@@ -20,6 +20,10 @@ function createAPI(core) {
   });
 
   // ─── Health ───────────────────────────────────────────────
+  app.get('/', (req, res) => {
+    res.send('<h1>OpenClaw Agent is Online</h1><p>Check <a href="/health">/health</a> for details.</p>');
+  });
+
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });

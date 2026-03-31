@@ -71,28 +71,24 @@ async function startServer() {
     createWebSocket(httpServer, core);
   }
 
-  // 5. Start listening
-  const port = config.server.port;
-  const host = config.server.host;
+  try {
+    // 5. Start listening
+    const port = config.server.port;
+    const host = config.server.host;
 
-  httpServer.listen(port, host, () => {
-    log.info('╔══════════════════════════════════════╗');
-    log.info(`║   Server running on ${host}:${port}     ║`);
-    log.info('╚══════════════════════════════════════╝');
-    log.info('Endpoints:');
-    log.info('  POST /goal     — Submit a goal');
-    log.info('  POST /task     — Execute a task');
-    log.info('  GET  /status   — Agent status');
-    log.info('  POST /tool     — Run a tool');
-    log.info('  GET  /memory   — Query memory');
-    log.info('  POST /memory   — Store memory');
-    log.info('  GET  /health   — Health check');
-    log.info('  GET  /tools    — List tools');
-    log.info('  GET  /goals    — Active goals');
-    log.info('  POST /improve  — Self-improve');
-    log.info('  WS   ws://     — WebSocket');
-    core.setState('idle');
-  });
+    httpServer.listen(port, host, async () => {
+      log.info('╔══════════════════════════════════════╗');
+      log.info(`║   Server running on ${host}:${port}     ║`);
+      log.info('╚══════════════════════════════════════╝');
+      
+      const health = await llm.healthCheck();
+      log.info('LLM Startup Check:', health);
+      
+      core.setState('idle');
+    });
+  } catch (err) {
+    log.error('HTTP Server Listen Error:', err);
+  }
 
   // 6. Graceful shutdown
   const shutdown = async () => {
