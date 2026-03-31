@@ -14,8 +14,17 @@ class LLMClient {
     
     this.groqApiKey = process.env.GROQ_API_KEY;
     // HARDCODED FIX: Use llama-3.1-8b-instant explicitly
-    this.groqModel = 'llama-3.1-8b-instant';
+    this.groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
     this.useGroq = !!this.groqApiKey;
+  }
+
+  _refreshConfig() {
+    // Some cloud platforms populate env vars after startup
+    if (!this.useGroq && process.env.GROQ_API_KEY) {
+      this.groqApiKey = process.env.GROQ_API_KEY;
+      this.useGroq = true;
+      log.info('LLM: Groq API Key detected dynamically');
+    }
   }
 
   init(core) {
@@ -27,6 +36,8 @@ class LLMClient {
   }
 
   async chat(messages, options = {}) {
+    this._refreshConfig();
+    
     if (this.useGroq) {
       return this.chatGroq(messages, options);
     }
@@ -43,17 +54,23 @@ class LLMClient {
     };
 
     try {
-      const res = await fetch(`${this.baseUrl}/api/chat`, {
+      const url = `${this.baseUrl}/api/chat`;
+      log.info('LLM request (Ollama)', { url, model });
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(`LLM HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
       const data = await res.json();
       return data.message?.content || '';
     } catch (err) {
-      if (model !== this.fallbackModel) return this.chat(messages, { ...options, model: this.fallbackModel });
-      throw err;
+      log.error('Ollama call failed', { error: err.message, url: this.baseUrl });
+      if (model !== this.fallbackModel) {
+        log.info('Falling back to model', { fallback: this.fallbackModel });
+        return this.chat(messages, { ...options, model: this.fallbackModel });
+      }
+      throw new Error(`Ollama failed and no other provider configured. Error: ${err.message}`);
     }
   }
 
